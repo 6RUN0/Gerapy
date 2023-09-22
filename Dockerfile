@@ -1,11 +1,12 @@
 FROM python:3.10-slim AS build
+ARG DEBIAN_FRONTEND noninteractive
 ENV PATH="/root/.local/bin:$PATH"
 WORKDIR /app
 COPY . /app
 # Install poetry
 RUN set -eux; \
-    apt-get update; \
-    apt-get install -y --no-install-recommends curl; \
+    apt update; \
+    apt install -y --no-install-recommends curl; \
     curl -sSL https://install.python-poetry.org | python3 -; \
     poetry --version
 # Build gerapy
@@ -16,6 +17,7 @@ RUN set -eux; \
 
 FROM python:3.10-slim
 # Install gerapy
+ARG DEBIAN_FRONTEND noninteractive
 ENV GERAPY_HOME_DIR ${GERAPY_HOME_DIR:-/home/gerapy}
 ENV GERAPY_GROUP ${GERAPY_GROUP:-gerapy}
 ENV GERAPY_GID ${GERAPY_GID:-10000}
@@ -26,15 +28,14 @@ WORKDIR $GERAPY_HOME_DIR
 COPY --from=build /app/dist/gerapy-*.whl /tmp/
 RUN \
     set -eux; \
-    apt-get update; \
-    apt-get install -y --no-install-recommends tini gosu; \
-    pip install /tmp/gerapy-*.whl; \
+    apt update; \
+    apt install -y --no-install-recommends tini gosu; \
+    pip install --no-color --disable-pip-version-check --no-cache-dir /tmp/gerapy-*.whl; \
     rm -f /tmp/gerapy-*.whl; \
     mkdir -p $GERAPY_HOME_DIR; \
     addgroup --gid $GERAPY_GID $GERAPY_GROUP; \
     adduser --uid $GERAPY_UID --home $GERAPY_HOME_DIR --ingroup $GERAPY_GROUP $GERAPY_USER; \
     chown $GERAPY_USER:$GERAPY_GROUP $GERAPY_HOME_DIR; \
-    pip cache purge; \
     apt autoclean; \
     rm -rf /var/lib/apt/lists/*;
 # Build run script
